@@ -1,5 +1,8 @@
 from atomgpt.inverse_models.vision_utils import AtomGPTVisionDataCollator
-from atomgpt.inverse_models.vision_dataset import generate_dataset
+from atomgpt.inverse_models.vision_dataset import (
+    generate_dataset,
+    ID_Prop_dataset,
+)
 import torch
 import os
 from jarvis.db.figshare import data
@@ -63,6 +66,20 @@ parser.add_argument(
     "--max_samples",
     default=None,
     help="Max. no. of samples, None=all",
+)
+
+
+parser.add_argument(
+    "--train_ratio",
+    default=0.9,
+    help="Training split ratio",
+)
+
+# functionality to train from csv file
+parser.add_argument(
+    "--id_prop_path",
+    default=None,
+    help="id_prop.csv path with POSCAR files and images.",
 )
 
 
@@ -337,19 +354,31 @@ def run(
     model_name="unsloth/Llama-3.2-11B-Vision-Instruct",
     output_folder="formula_based",
     max_samples=None,
+    train_ratio=0.9,
+    id_prop_path=None,
 ):
     # def run(datasets=["dft_3d", "dft_2d"], model_name="unsloth/Pixtral-12B-2409"):
-    train_datasets = []
-    test_datasets = []
-    for i in datasets:
-        train_dataset, test_dataset = generate_dataset(
-            dataset_name=i,
-            output_folder=output_folder,
-            id_tag=id_tag,
+    if id_prop_path is None:
+        train_datasets = []
+        test_datasets = []
+        # TODO: Check sets vs set
+        for i in datasets:
+            train_dataset, test_dataset = generate_dataset(
+                dataset_name=i,
+                output_folder=output_folder,
+                id_tag=id_tag,
+                max_samples=max_samples,
+                train_ratio=train_ratio,
+            )
+            train_datasets.extend(train_dataset)
+            test_datasets.extend(test_dataset)
+    else:
+        train_dataset, test_dataset = ID_Prop_dataset(
+            csv_file_path=id_prop_path,
+            train_ratio=train_ratio,
             max_samples=max_samples,
-        )
-        train_datasets.extend(train_dataset)
-        test_datasets.extend(test_dataset)
+        ).split_dataset()
+
     # model, tokenizer = get_model(model_name=model_name)
     model, tokenizer = get_model(model_name=model_name)
     # train_dataset = Dataset.from_list(train_dataset)
@@ -439,6 +468,8 @@ if __name__ == "__main__":
         id_tag=args.id_tag,
         output_folder=args.output_folder,
         max_samples=max_samples,
+        train_ratio=float(args.train_ratio),
+        id_prop_path=args.id_prop_path,
     )
 
     # run(
