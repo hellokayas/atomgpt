@@ -137,8 +137,13 @@ python atomgpt/inverse_models/inverse_predict.py --output_dir outputs_xrd/checkp
 
 Example training:
 
+Change dft_2d to c2db or alex_pbe_2d_all if you need larger training set as given here https://atomgptlab.github.io/jarvis-tools/databases/.
+
+Remove max_samples command to train on entire dataset.
+
+
 ```
-python atomgpt/inverse_models/inverse_vision.py --max_samples 10
+python atomgpt/inverse_models/inverse_vision.py  --dataset dft_2d --max_samples 10
 ```
 
 Using id_prop.csv like format for POSCAR files and corresponding images:
