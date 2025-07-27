@@ -4,6 +4,7 @@ from atomgpt.inverse_models.vision_dataset import (
     ID_Prop_dataset,
 )
 import torch
+from peft import LoraConfig
 import os
 from jarvis.db.figshare import data
 from tqdm import tqdm
@@ -248,8 +249,10 @@ def get_model(model_name="unsloth/Pixtral-12B-2409"):
         use_gradient_checkpointing="unsloth",  # True or "unsloth" for long context
     )
     try:
+        from huggingface_hub import snapshot_download
+        path = snapshot_download(model_name, local_dir=f"/projects/p32726/microscopy-gpt/atomgpt/atomgpt/models/{model_name}")
         model = FastVisionModel.get_peft_model(
-            model,
+            path,
             # We do NOT finetune vision & attention layers since Pixtral uses more memory!
             finetune_vision_layers=False,  # False if not finetuning vision layers
             finetune_language_layers=True,  # False if not finetuning language layers
@@ -385,9 +388,20 @@ def run(
 
     FastVisionModel.for_training(model)  # Enable for training!
     output_dir = output_folder + "_" + "_".join(datasets) + "_" + model_name
+    peft_cfg = LoraConfig(
+        task_type="CAUSAL_LM",
+        r=8,
+        lora_alpha=8,
+        lora_dropout=0.0,
+        bias="none",
+        target_modules=[
+            "q_proj", "k_proj", "v_proj", "o_proj",
+            "gate_proj", "down_proj", "up_proj",
+        ],)
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
+        peft_config=peft_cfg,
         data_collator=AtomGPTVisionDataCollator(model, tokenizer),  # Must use!
         train_dataset=train_dataset,
         args=SFTConfig(
