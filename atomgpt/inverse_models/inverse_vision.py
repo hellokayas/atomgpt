@@ -4,10 +4,12 @@ from atomgpt.inverse_models.vision_dataset import (
     ID_Prop_dataset,
 )
 import torch
+import re
 from peft import LoraConfig
 import os
 from jarvis.db.figshare import data
 from tqdm import tqdm
+import traceback
 from jarvis.core.atoms import Atoms, get_supercell_dims, crop_square
 from jarvis.analysis.stem.convolution_apprx import STEMConv
 from jarvis.core.specie import Specie
@@ -85,14 +87,17 @@ parser.add_argument(
 
 
 def text2atoms(response):
-    response = response.split("assistant<|end_header_id|>\n")[1].split(
+    # print("text2atoms response", response)
+    response = response.split("<|eot_id|><|start_header_id|>assistant<|end_header_id|>")[1].split(
         ". The "
-    )[0]
-    tmp_atoms_array = response.strip("</s>").split("\n")
+    )[0].strip()
+    print("response", response)
+    tmp_atoms_array = response.strip("<|eot_id|>").split("\n")
+    print("tmp_atoms_array", tmp_atoms_array)
     # tmp_atoms_array= [element for element in tmp_atoms_array  if element != '']
     # print("tmp_atoms_array", tmp_atoms_array)
-    lat_lengths = np.array(tmp_atoms_array[1].split(), dtype="float")
-    lat_angles = np.array(tmp_atoms_array[2].split(), dtype="float")
+    lat_lengths = np.array(tmp_atoms_array[0].split(), dtype="float")
+    lat_angles = np.array(tmp_atoms_array[1].split(), dtype="float")
 
     lat = Lattice.from_parameters(
         lat_lengths[0],
@@ -118,7 +123,6 @@ def text2atoms(response):
         cartesian=False,
     )
     return atoms
-
 
 class EnhancedTrainingMonitor(TrainerCallback):
     def __init__(
@@ -243,6 +247,7 @@ class EnhancedTrainingMonitor(TrainerCallback):
 
 def get_model(model_name="unsloth/Pixtral-12B-2409"):
 
+    print(model_name)
     model, tokenizer = FastVisionModel.from_pretrained(
         model_name,
         load_in_4bit=True,  # Use 4bit to reduce memory use. False for 16bit LoRA.
@@ -250,9 +255,9 @@ def get_model(model_name="unsloth/Pixtral-12B-2409"):
     )
     try:
         from huggingface_hub import snapshot_download
-        path = snapshot_download(model_name, local_dir=f"/projects/p32726/microscopy-gpt/atomgpt/atomgpt/models/{model_name}")
+        # path = snapshot_download(model_name, local_dir=f"/projects/p32726/microscopy-gpt/atomgpt/atomgpt/models/{model_name}")
         model = FastVisionModel.get_peft_model(
-            path,
+            model_name, #path,
             # We do NOT finetune vision & attention layers since Pixtral uses more memory!
             finetune_vision_layers=False,  # False if not finetuning vision layers
             finetune_language_layers=True,  # False if not finetuning language layers
@@ -320,6 +325,7 @@ def evaluate_and_save(
                 outputs = model.generate(**inputs, max_new_tokens=1554)
 
             generated = tokenizer.batch_decode(outputs)[0]
+            print(generated)
 
             # Target atoms
             target_text = None
@@ -329,7 +335,7 @@ def evaluate_and_save(
                     break
 
             target_atoms = text2atoms(
-                "assistant<|end_header_id|>\n" + target_text
+                "<|eot_id|><|start_header_id|>assistant<|end_header_id|>" + target_text
             )
             pred_atoms = text2atoms(generated)
 
@@ -411,12 +417,13 @@ def run(
             # save_strategy="epoch",
             # save_steps=1,
             # max_steps = 30,
-            num_train_epochs=5,  # Set this instead of max_steps for full training runs
+            num_train_epochs=10,  # Set this instead of max_steps for full training runs
             learning_rate=2e-4,
             fp16=not is_bf16_supported(),
             bf16=is_bf16_supported(),
             logging_steps=1,
             save_steps=100,
+            save_total_limit=1,
             # optim="adamw_torch_fused",
             optim="paged_adamw_8bit",
             weight_decay=0.01,
@@ -455,7 +462,7 @@ def run(
     gpu_usage = PrintGPUUsageCallback()
     trainer.add_callback(gpu_usage)
 
-    trainer_stats = trainer.train()
+    # trainer_stats = trainer.train()
     evaluate_and_save(
         model,
         tokenizer,
