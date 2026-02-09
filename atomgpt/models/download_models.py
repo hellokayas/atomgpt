@@ -5,7 +5,7 @@ Download specified base models into exact local locations using huggingface_hub.
 Usage:
   python download_base_models.py
   # or (optionally) pass an HF token:
-  HF_TOKEN=... python download_base_models.py
+  HF_TOKEN= generate token using this https://huggingface.co/settings/tokens and then use export HF_TOKEN={your_token_here}
 """
 
 import os

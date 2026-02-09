@@ -62,8 +62,6 @@ TASKS = [
     # {"name": "MoS2", "image": f"{IMG_DIR}/MoS2.png","formula": "MoS2"},
 ]
 
-# Optional: If you ever want a completely custom prompt for one task,
-# set "custom_prompt" in that task dict. Otherwise the template below is used.
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Prompt template
