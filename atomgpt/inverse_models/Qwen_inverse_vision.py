@@ -88,11 +88,11 @@ parser.add_argument(
 
 def text2atoms(response):
     # print("text2atoms response", response)
-    response = response.split("<|eot_id|><|start_header_id|>assistant<|end_header_id|>")[1].split(
-        ". The "
+    response = response.split("<|im_start|>assistant")[1].split(
+        ". The"
     )[0].strip()
     print("response", response)
-    tmp_atoms_array = response.strip("<|eot_id|>").split("\n")
+    tmp_atoms_array = response.strip("<|im_end|>").split("\n")
     print("tmp_atoms_array", tmp_atoms_array)
     # tmp_atoms_array= [element for element in tmp_atoms_array  if element != '']
     # print("tmp_atoms_array", tmp_atoms_array)
@@ -255,9 +255,9 @@ def get_model(model_name="unsloth/Pixtral-12B-2409"):
     )
     try:
         from huggingface_hub import snapshot_download
-        path = snapshot_download(model_name, local_dir=f"/projects/p32726/microscopy-gpt/atomgpt/atomgpt/models/{model_name}")
+        # path = snapshot_download(model_name, local_dir=f"/projects/p32726/microscopy-gpt/atomgpt/atomgpt/models/{model_name}")
         model = FastVisionModel.get_peft_model(
-            path, #model_name,
+            model_name,
             # We do NOT finetune vision & attention layers since Pixtral uses more memory!
             finetune_vision_layers=False,  # False if not finetuning vision layers
             finetune_language_layers=True,  # False if not finetuning language layers
@@ -335,7 +335,7 @@ def evaluate_and_save(
                     break
 
             target_atoms = text2atoms(
-                "<|eot_id|><|start_header_id|>assistant<|end_header_id|>" + target_text
+                "<|im_start|>assistant" + target_text
             )
             pred_atoms = text2atoms(generated)
 
@@ -417,7 +417,7 @@ def run(
             # save_strategy="epoch",
             # save_steps=1,
             # max_steps = 30,
-            num_train_epochs=8,  # Set this instead of max_steps for full training runs
+            num_train_epochs=11,  # Set this instead of max_steps for full training runs
             learning_rate=2e-4,
             fp16=not is_bf16_supported(),
             bf16=is_bf16_supported(),
@@ -461,8 +461,10 @@ def run(
     trainer.add_callback(callback)
     gpu_usage = PrintGPUUsageCallback()
     trainer.add_callback(gpu_usage)
+    import os
+    os.environ['AtomGPT_RETURN_LOGITS'] = '1'
 
-    trainer_stats = trainer.train()
+    trainer_stats = trainer.train(resume_from_checkpoint=True)
     evaluate_and_save(
         model,
         tokenizer,

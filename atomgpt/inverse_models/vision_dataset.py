@@ -328,6 +328,7 @@ class STEMDatasetGenerator:
                 #    )
                 # )
                 + ". Generate atomic structure description with lattice lengths, angles, coordinates, and atom types. Also predict the Miller index."
+                + ". Your primary constraint: **do not change the stoichiometry**. Use exactly the same elements and exactly the same integer counts as in the formula above. Do not add, remove, merge, reduce, or simplify elements. If the formula is Br9Nb2Rb2, your output must still contain Br (9), Nb (2), and Rb (2)."
             )
             explanation = (
                 f"\n{poscar_string}"
@@ -455,7 +456,8 @@ class STEMDatasetGenerator:
                         )
                         """
 
-                        pil_image = Image.fromarray(final_image).convert("L")
+                        # pil_image = Image.fromarray(final_image).convert("L")
+                        pil_image = Image.fromarray(final_image).convert("RGB")
 
                         image_filename = f"{material_id}_{scale_factor}x{scale_factor}x{scale_factor}_{miller_index[0]}{miller_index[1]}{miller_index[2]}.jpg"
                         image_path = os.path.join(
@@ -476,6 +478,7 @@ class STEMDatasetGenerator:
                             #    )
                             # )
                             + ". Generate atomic structure description with lattice lengths, angles, coordinates, and atom types. Also predict the Miller index."
+                            + ". Your primary constraint: **do not change the stoichiometry**. Use exactly the same elements and exactly the same integer counts as in the formula above. Do not add, remove, merge, reduce, or simplify elements. If the formula is Br9Nb2Rb2, your output must still contain Br (9), Nb (2), and Rb (2)."
                         )
                         explanation = (
                             f"\n{poscar_string}"
@@ -699,6 +702,7 @@ class ID_Prop_dataset:
                     "The chemical formula is "
                     + atoms.composition.reduced_formula
                     + ". Generate atomic structure description with lattice lengths, angles, coordinates, and atom types."
+                    + ". Your primary constraint: **do not change the stoichiometry**. Use exactly the same elements and exactly the same integer counts as in the formula above. Do not add, remove, merge, reduce, or simplify elements. If the formula is Br9Nb2Rb2, your output must still contain Br (9), Nb (2), and Rb (2)."
                 )
 
                 explanation = f"\n{poscar_string}"
